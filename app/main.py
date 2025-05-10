@@ -24,5 +24,5 @@ def read_root():
 
 ## Including the routers from other files.
 app.include_router(users.router)
-app.include_router(posts.router)
+app.include_router(posts.router, prefix="/posts", tags=["Posts"])
 app.include_router(auth_routes.router)

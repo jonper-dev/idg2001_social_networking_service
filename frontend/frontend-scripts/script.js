@@ -112,22 +112,56 @@ if (menuToggle && navLinks) {
 // Searchbar input
 function searchPosts() {
   const query = document.querySelector("#search-input").value.trim();
+  const type = document.querySelector("#search-type").value; // Dropdown for search type
   if (!query) return;
 
-  fetch(`${API_BASE_URL}/posts/search/?query=${encodeURIComponent(query)}`)
+  fetch(`${API_BASE_URL}/posts/search/?query=${encodeURIComponent(query)}&type=${type}`)
     .then((res) => {
       if (!res.ok) throw new Error("Search failed");
       return res.json();
     })
-    .then((posts) => {
-      const postList = document.getElementById("post-list");
-      if (!postList) return;
-      renderPosts(posts, postList);
+    .then((results) => {
+      const resultList = document.getElementById("post-list");
+      if (!resultList) return;
+
+      if (type === "posts") {
+        renderPosts(results, resultList);
+      } else if (type === "accounts") {
+        renderAccounts(results, resultList);
+      } else if (type === "hashtags") {
+        renderHashtags(results, resultList);
+      }
     })
     .catch((err) => {
       console.error("Search error:", err);
       alert("Search failed. Please try again.");
     });
+}
+
+// Render accounts
+function renderAccounts(accounts, container) {
+  container.innerHTML = "";
+  accounts.forEach((account) => {
+    const accountDiv = document.createElement("div");
+    accountDiv.className = "account";
+    accountDiv.innerHTML = `
+      <strong>${account.name}</strong> (${account.email})
+    `;
+    container.appendChild(accountDiv);
+  });
+}
+
+// Render hashtags
+function renderHashtags(hashtags, container) {
+  container.innerHTML = "";
+  hashtags.forEach((hashtag) => {
+    const hashtagDiv = document.createElement("div");
+    hashtagDiv.className = "hashtag";
+    hashtagDiv.innerHTML = `
+      <strong>#${hashtag.name}</strong>
+    `;
+    container.appendChild(hashtagDiv);
+  });
 }
 
 // Sign up

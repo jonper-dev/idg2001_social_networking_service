@@ -20,9 +20,14 @@
           <h1 class="logo__text">Cheeper</h1>
         </div>
         <form id="search-form" role="search">
-          <label for="search-input" class="sr-only">Search posts</label>
-          <input type="text" id="search-input" placeholder="Search posts..." />
-          <button type="submit" id="search-button" aria-label="Search posts">🔍</button>
+          <label for="search-input" class="sr-only">Search</label>
+          <input type="text" id="search-input" placeholder="Search..." />
+          <select id="search-type">
+            <option value="posts">Posts</option>
+            <option value="accounts">Accounts</option>
+            <option value="hashtags">Hashtags</option>
+          </select>
+          <button type="submit" id="search-button" aria-label="Search">🔍</button>
         </form>               
         <button class="menu-toggle" id="menu-toggle">&#9776;</button>
         <ul class="nav-links" id="nav-links">
