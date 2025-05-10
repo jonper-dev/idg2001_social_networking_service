@@ -58,6 +58,23 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Post not found.")
     return post
 
+## Search posts by content
+@router.get("/search")
+def search(
+    query: str,
+    type: str = "posts",  # Default to searching posts
+    db: Session = Depends(get_db)
+):
+    if type == "posts":
+        results = crud.search_posts(db, query)
+    elif type == "accounts":
+        results = crud.search_accounts(db, query)
+    elif type == "hashtags":
+        results = crud.search_hashtags(db, query)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid search type.")
+    
+    return results
 
 
 ###########################
@@ -165,8 +182,3 @@ def unlike_post(post_id: int, request: Request, db: Session = Depends(get_db)):
 
     return JSONResponse(content={"message": "Post unliked successfully."}, status_code=200)
 
-## Search posts by content
-@router.get("/search")
-def search_posts(query: str, db: Session = Depends(get_db)):
-    results = db.query(Post).filter(Post.content.ilike(f"%{query}%")).order_by(Post.created_at.desc()).all()
-    return results

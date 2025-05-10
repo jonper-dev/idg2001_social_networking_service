@@ -2,6 +2,9 @@ from sqlalchemy.orm import Session, joinedload
 from app.models.models import User, Post, Hashtag, likes_table as likes, post_hashtags
 from sqlalchemy import or_
 import bcrypt
+import logging
+
+logger = logging.getLogger(__name__)
 
 ######################
 ### -- PASSWORD -- ###
@@ -23,28 +26,18 @@ def get_users(db: Session):
     return db.query(User).all()
 
 def get_user(db: Session, user_id: int):
-    return db.query(User).filter(User.id == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        logger.warning(f"User with ID {user_id} not found.")
+    return user
 
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
 
 def verify_user_credentials(db: Session, email: str, password: str):
     user = get_user_by_email(db, email)
-    if user and not user.password.startswith('$2b$'): 
-        
-        # Checking if password is hashed, if not it will hash it
-        # and save it to the database hashed
-        if password == user.password:  
-            hashed_pw = hash_password(password)
-            user.password = hashed_pw
-            db.commit()  # Save the hashed password
-            db.refresh(user)
-            return user
-        return None
-    
-    if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        return user         
-    
+    if user and verify_password(password, user.password):  # Use the verify_password function
+        return user
     return None
 
 ## Signup
@@ -63,7 +56,7 @@ def update_user(db: Session, user_id: int, name: str, email: str, password: str)
         return None
     user.name = name
     user.email = email
-    user.password = password  # You could also hash it here
+    user.password = hash_password(password)  # Ensure password is hashed
     db.commit()
     db.refresh(user)
     return user
@@ -74,6 +67,8 @@ def partial_update_user(db: Session, user_id: int, updates: dict):
     if not user:
         return None
     for key, value in updates.items():
+        if key == "password":  # Ensure password is hashed
+            value = hash_password(value)
         setattr(user, key, value)
     db.commit()
     db.refresh(user)
@@ -82,14 +77,16 @@ def partial_update_user(db: Session, user_id: int, updates: dict):
 def follow_user(db: Session, follower_id: int, followed_id: int):
     follower = db.query(User).get(follower_id)
     followed = db.query(User).get(followed_id)
+    if not follower or not followed:
+        return None  # Return None if either user does not exist
     if followed not in follower.following:
         follower.following.append(followed)
         db.commit()
     return follower
 
 ## List all accounts
-def list_accounts(db: Session):
-    return db.query(User).all()
+def list_accounts(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(User).offset(skip).limit(limit).all()
 
 
 ###################
@@ -98,13 +95,16 @@ def list_accounts(db: Session):
 def create_post(db: Session, post_data):
     from app.models.models import Post, Hashtag  # Avoid circular imports
 
+    if not post_data.content or not post_data.user_id:
+        raise ValueError("Post content and user_id are required.")  # Validate input
+
     post = Post(
         content=post_data.content,
         user_id=post_data.user_id,
         reply_to_id=post_data.reply_to_id
     )
 
-## Handle hashtags
+    # Handle hashtags
     for tag in post_data.hashtags:
         tag = tag.lower().strip()
         existing = db.query(Hashtag).filter(Hashtag.name == tag).first()
@@ -195,7 +195,7 @@ def is_post_liked_by_user(db: Session, post_id: int, user_id: int):
 
 ## Reply to post
 def reply_to_post(db: Session, user_id: int, content: str, parent_id: int):
-    return create_post(db, user_id=user_id, content=content, reply_to_id=parent_id)
+    return create_post(db, post_data={"user_id": user_id, "content": content, "reply_to_id": parent_id})
 
 ####################
 ### -- SEARCH -- ###
